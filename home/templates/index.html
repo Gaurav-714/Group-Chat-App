@@ -41,7 +41,13 @@
 <body class="d-flex flex-column align-items-center justify-content-center">
 
     <!-- Chat Box -->
-    <div class="chat mt-4 rounded" id="chat-log"></div>
+    <div class="chat mt-4 rounded" id="chat-log">
+        {% for chat in chats %}
+        <div class="message {% if chat.sender == request.user %}user-message{% else %}server-message{% endif %}">
+            {{ chat.content }}
+        </div>
+        {% endfor %}
+    </div>
 
     <!-- Input Box -->
     <div class="input-group mt-4 w-50">
@@ -52,8 +58,9 @@
     <!-- WebSocket Script -->
     <script>
         // var ws = new WebSocket('ws://127.0.0.1:8000/ws/chat/{{ group_name }}/');
-        
-        var ws = new WebSocket('ws://' + window.location.host + '/ws/chat/{{ group_name }}/');
+
+        var groupName = "{{ group_name }}";
+        var ws = new WebSocket('ws://' + window.location.host + '/ws/chat/' + groupName + '/');
 
         ws.onopen = function () {
             console.log('✅ WebSocket Connection Opened');
@@ -63,10 +70,10 @@
             var data = JSON.parse(event.data);
             console.log('📩 Message Received:', data.message);
 
-            // Display all messages from others
-            displayMessage(data.message, "server");
+            // Check if message is from the user or another client
+            var sender = data.sender === "user" ? "user" : "server";
+            displayMessage(data.message, sender);
         };
-
 
         ws.onerror = function (error) {
             console.error('❌ WebSocket Error:', error);
@@ -92,8 +99,8 @@
 
                     console.log('📤 Sent Message:', message);
 
-                    // Display message only once (as user message)
-                    // displayMessage(message, "user");
+                    // Display user messages instantly
+                    displayMessage(message, "user");
 
                     messageInput.value = "";
                 } else {
@@ -118,6 +125,7 @@
             chatLog.appendChild(messageElement);
             chatLog.scrollTop = chatLog.scrollHeight; // Auto-scroll to latest message
         }
+
     </script>
 
     <!-- Bootstrap JS -->

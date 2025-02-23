@@ -1,5 +1,9 @@
-from channels.consumer import AsyncConsumer, async_to_sync
+from channels.consumer import AsyncConsumer
 from channels.exceptions import StopConsumer
+from channels.db import database_sync_to_async
+import json
+from .models import GroupModel, ChatModel
+
 
 class ChatConsumer(AsyncConsumer):
     async def websocket_connect(self, event):
@@ -13,14 +17,23 @@ class ChatConsumer(AsyncConsumer):
 
     async def websocket_receive(self, event):
         print(f"📩 Message Received From Client: {event['text']}")
-
-        # Broadcast the message to all connected clients
-        await self.channel_layer.group_send(
-            self.group_name, {
-                'type': 'chat.message',
-                'message': event['text']
-            }
-        )
+        try:
+            data = json.loads(event['text'])
+            group = await database_sync_to_async(GroupModel.objects.get)(name=self.group_name)
+            chat = await database_sync_to_async(ChatModel.objects.create)(
+                content=data['message'], group=group
+            )
+            # Send message to group
+            await self.channel_layer.group_send(
+                self.group_name, {
+                    'type': 'chat.message',
+                    'message': data['message']  # Extracted from JSON
+                }
+            )
+        except json.JSONDecodeError:
+            print("❌ Invalid JSON received.")
+        except GroupModel.DoesNotExist:
+            print(f"❌ Group '{self.group_name}' does not exist.")
 
     async def chat_message(self, event):
         print(f"🔄 Broadcasting Message: {event['message']}")
