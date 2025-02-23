@@ -1,4 +1,6 @@
 from django.db import models
+from django.contrib.auth.models import User
+
 
 class GroupModel(models.Model):
     name = models.CharField(max_length=255)
@@ -15,10 +17,11 @@ class ChatModel(models.Model):
     content = models.CharField(max_length=1000)
     timestamp = models.DateField(auto_now=True)
     group = models.ForeignKey(GroupModel, on_delete=models.CASCADE)
+    sender = models.ForeignKey(User, on_delete=models.CASCADE)
 
     class Meta:
         verbose_name = 'Chat'
         verbose_name_plural = 'Chats'
 
     def __str__(self):
-        return self.content
+        return f"{self.content} - {self.timestamp}"

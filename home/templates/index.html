@@ -5,9 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chat App</title>
-    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-
     <style>
         .chat {
             border: 2px solid gray;
@@ -20,45 +18,44 @@
         }
 
         .message {
-            padding: 5px 10px;
+            padding: 8px 12px;
             margin: 5px 0;
-            border-radius: 5px;
-            max-width: 80%;
+            border-radius: 10px;
+            max-width: 60%;
+            word-wrap: break-word;
         }
 
         .server-message {
             background-color: #e1f5fe;
             align-self: flex-start;
+            text-align: left;
         }
 
         .user-message {
             background-color: #d1f0d7;
             align-self: flex-end;
+            text-align: right;
         }
     </style>
 </head>
 
 <body class="d-flex flex-column align-items-center justify-content-center">
 
-    <!-- Chat Box -->
     <div class="chat mt-4 rounded" id="chat-log">
         {% for chat in chats %}
-        <div class="message {% if chat.sender == request.user %}user-message{% else %}server-message{% endif %}">
+        <div
+            class="message {% if chat.sender.username == request.user.username %}user-message{% else %}server-message{% endif %}">
             {{ chat.content }}
         </div>
         {% endfor %}
     </div>
 
-    <!-- Input Box -->
     <div class="input-group mt-4 w-50">
-        <input type="text" id="message-input" class="form-control" placeholder="Type Your Message Here...">
+        <input type="text" id="message-input" class="form-control" placeholder="Type Your Message...">
         <button class="btn btn-primary" id="send-message">Send</button>
     </div>
 
-    <!-- WebSocket Script -->
     <script>
-        // var ws = new WebSocket('ws://127.0.0.1:8000/ws/chat/{{ group_name }}/');
-
         var groupName = "{{ group_name }}";
         var ws = new WebSocket('ws://' + window.location.host + '/ws/chat/' + groupName + '/');
 
@@ -68,11 +65,10 @@
 
         ws.onmessage = function (event) {
             var data = JSON.parse(event.data);
-            console.log('📩 Message Received:', data.message);
+            //console.log('📩 Message Received:', data.message);
 
-            // Check if message is from the user or another client
-            var sender = data.sender === "user" ? "user" : "server";
-            displayMessage(data.message, sender);
+            var senderType = data.sender === "{{ request.user.username }}" ? "user" : "server";
+            displayMessage(data.message, senderType);
         };
 
         ws.onerror = function (error) {
@@ -94,14 +90,9 @@
 
             if (message !== "") {
                 if (ws.readyState === WebSocket.OPEN) {
-                    let messageData = JSON.stringify({ 'message': message, 'sender': 'user' });
+                    let messageData = JSON.stringify({ 'message': message, 'sender': "{{ request.user.username }}" });
                     ws.send(messageData);
-
-                    console.log('📤 Sent Message:', message);
-
-                    // Display user messages instantly
-                    displayMessage(message, "user");
-
+                    //console.log('📤 Sent Message:', message);
                     messageInput.value = "";
                 } else {
                     console.error("⚠️ WebSocket is not open. Message not sent.");
@@ -114,23 +105,14 @@
             var messageElement = document.createElement('div');
 
             messageElement.textContent = message;
-            messageElement.classList.add("message");
-
-            if (sender === "server") {
-                messageElement.classList.add("server-message");
-            } else {
-                messageElement.classList.add("user-message");
-            }
+            messageElement.classList.add("message", sender === "user" ? "user-message" : "server-message");
 
             chatLog.appendChild(messageElement);
-            chatLog.scrollTop = chatLog.scrollHeight; // Auto-scroll to latest message
+            chatLog.scrollTop = chatLog.scrollHeight;
         }
-
     </script>
 
-    <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
 </body>
 
 </html>
