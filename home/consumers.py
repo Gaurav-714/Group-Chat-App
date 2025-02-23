@@ -1,22 +1,37 @@
-from channels.consumer import SyncConsumer, async_to_sync
+from channels.consumer import AsyncConsumer, async_to_sync
 from channels.exceptions import StopConsumer
 
-class ChatConsumer(SyncConsumer):
-    def websocket_connect(self, event):
-        print("Websocket Connected...")
-        async_to_sync(self.channel_layer.group_add)("dj-devs", self.channel_name)
-        self.send({
+class ChatConsumer(AsyncConsumer):
+    async def websocket_connect(self, event):
+        print(f"✅ Websocket Connected: {self.channel_name}")
+
+        self.group_name = self.scope['url_route']['kwargs']['group_name']
+        await self.channel_layer.group_add(self.group_name, self.channel_name)
+        await self.send({
             'type': 'websocket.accept'
         })
 
-    def websocket_receive(self, event):
-        print("Message Received From Client...")
-        self.send({
-            'type': 'websocket.receive',
-            'text': 'Hello from server...'
+    async def websocket_receive(self, event):
+        print(f"📩 Message Received From Client: {event['text']}")
+
+        # Broadcast the message to all connected clients
+        await self.channel_layer.group_send(
+            self.group_name, {
+                'type': 'chat.message',
+                'message': event['text']
+            }
+        )
+
+    async def chat_message(self, event):
+        print(f"🔄 Broadcasting Message: {event['message']}")
+
+        await self.send({
+            'type': 'websocket.send',
+            'text': event['message']
         })
 
-    def websocket_disconnect(self, event):
-        print("Websocket Disconnected...")
-        async_to_sync(self.channel_layer.group_discard)("dj-devs", self.channel_name)
+    async def websocket_disconnect(self, event):
+        print(f"❌ Websocket Disconnected: {self.channel_name}")
+        
+        await self.channel_layer.group_discard(self.group_name, self.channel_name)
         raise StopConsumer()

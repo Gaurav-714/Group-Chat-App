@@ -14,6 +14,26 @@
             width: 700px;
             height: 450px;
             overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            padding: 10px;
+        }
+
+        .message {
+            padding: 5px 10px;
+            margin: 5px 0;
+            border-radius: 5px;
+            max-width: 80%;
+        }
+
+        .server-message {
+            background-color: #e1f5fe;
+            align-self: flex-start;
+        }
+
+        .user-message {
+            background-color: #d1f0d7;
+            align-self: flex-end;
         }
     </style>
 </head>
@@ -21,15 +41,7 @@
 <body class="d-flex flex-column align-items-center justify-content-center">
 
     <!-- Chat Box -->
-    <div class="chat p-3 mt-4 rounded">
-        <div id="chat-log" class="d-flex flex-column text-start">
-            <label>xyz</label>
-            <label>xyz</label>
-            <label>xyz</label>
-            <label>xyz</label>
-            <label>xyz</label>
-        </div>
-    </div>
+    <div class="chat mt-4 rounded" id="chat-log"></div>
 
     <!-- Input Box -->
     <div class="input-group mt-4 w-50">
@@ -39,20 +51,73 @@
 
     <!-- WebSocket Script -->
     <script>
-        var ws = new WebSocket('ws://127.0.0.1:8000/ws/chat/');
+        // var ws = new WebSocket('ws://127.0.0.1:8000/ws/chat/{{ group_name }}/');
+        
+        var ws = new WebSocket('ws://' + window.location.host + '/ws/chat/{{ group_name }}/');
 
-        ws.onopen = function (event) {
-            console.log('WebSocket Connection Opened...');
+        ws.onopen = function () {
+            console.log('✅ WebSocket Connection Opened');
         };
 
         ws.onmessage = function (event) {
-            console.log('Message Received From Server:', event.data);
+            var data = JSON.parse(event.data);
+            console.log('📩 Message Received:', data.message);
+
+            // Display all messages from others
+            displayMessage(data.message, "server");
         };
 
-        ws.onclose = function (event) {
-            console.log('WebSocket Connection Closed...');
+
+        ws.onerror = function (error) {
+            console.error('❌ WebSocket Error:', error);
         };
 
+        ws.onclose = function () {
+            console.warn('⚠️ WebSocket Connection Closed');
+        };
+
+        document.getElementById('send-message').addEventListener('click', sendMessage);
+        document.getElementById('message-input').addEventListener('keydown', function (event) {
+            if (event.key === "Enter") sendMessage();
+        });
+
+        function sendMessage() {
+            var messageInput = document.getElementById('message-input');
+            var message = messageInput.value.trim();
+
+            if (message !== "") {
+                if (ws.readyState === WebSocket.OPEN) {
+                    let messageData = JSON.stringify({ 'message': message, 'sender': 'user' });
+                    ws.send(messageData);
+
+                    console.log('📤 Sent Message:', message);
+
+                    // Display message only once (as user message)
+                    // displayMessage(message, "user");
+
+                    messageInput.value = "";
+                } else {
+                    console.error("⚠️ WebSocket is not open. Message not sent.");
+                }
+            }
+        }
+
+        function displayMessage(message, sender) {
+            var chatLog = document.getElementById('chat-log');
+            var messageElement = document.createElement('div');
+
+            messageElement.textContent = message;
+            messageElement.classList.add("message");
+
+            if (sender === "server") {
+                messageElement.classList.add("server-message");
+            } else {
+                messageElement.classList.add("user-message");
+            }
+
+            chatLog.appendChild(messageElement);
+            chatLog.scrollTop = chatLog.scrollHeight; // Auto-scroll to latest message
+        }
     </script>
 
     <!-- Bootstrap JS -->
